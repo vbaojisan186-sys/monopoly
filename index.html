@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a23">
+  <title>MONOPOLY DAY — すごろく</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f4e9;
+      --muted: #a7b3a5;
+      --green: #102a23;
+      --panel: #18372e;
+      --panel-light: #21483b;
+      --line: #34594b;
+      --gold: #f3c969;
+      --cream: #f5f0df;
+      --red: #f07867;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 48% 42%, rgba(56, 103, 77, .35), transparent 55%),
+        var(--green);
+      font-family: ui-rounded, "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+    }
+    button { font: inherit; }
+    .app { max-width: 1440px; margin: auto; padding: 28px clamp(16px, 3vw, 42px) 36px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: #172f25; background: var(--gold); font-size: 24px; font-weight: 900; transform: rotate(-7deg); }
+    .eyebrow { margin: 0 0 3px; color: var(--gold); font-size: 10px; font-weight: 800; letter-spacing: .22em; }
+    h1 { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: .02em; }
+    .header-meta { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #79d6a2; box-shadow: 0 0 10px #79d6a2; }
+
+    .layout { display: grid; grid-template-columns: minmax(500px, 1fr) 330px; gap: 22px; align-items: start; }
+    .board-shell { padding: clamp(8px, 1.5vw, 18px); border: 1px solid rgba(224, 224, 190, .12); border-radius: 24px; background: rgba(8, 24, 19, .45); box-shadow: 0 24px 70px #07161066; }
+    .board { aspect-ratio: 1; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(9, minmax(0, 1fr)); gap: 5px; }
+    .tile {
+      min-width: 0; position: relative; display: flex; flex-direction: column; justify-content: space-between;
+      padding: clamp(3px, .7vw, 9px); overflow: hidden; border: 1px solid #d5d0bd;
+      border-radius: 5px; color: #22362e; background: var(--cream); text-align: center;
+    }
+    .tile.property { padding-top: clamp(12px, 2vw, 25px); }
+    .tile-band { position: absolute; inset: 0 0 auto; height: 14%; background: var(--band, #aaa); }
+    .tile-name { display: grid; place-items: center; flex: 1; font-size: clamp(7px, .78vw, 11px); font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+    .tile-price { color: #526357; font-size: clamp(6px, .65vw, 9px); font-weight: 650; }
+    .tile-icon { font-size: clamp(11px, 1.5vw, 20px); line-height: 1; }
+    .tile.corner { justify-content: center; gap: 5px; }
+    .tile.corner .tile-name { flex: initial; font-size: clamp(8px, 1vw, 13px); }
+    .tile.corner .tile-icon { font-size: clamp(16px, 2.4vw, 31px); }
+    .tile.current { outline: 3px solid var(--gold); outline-offset: -3px; z-index: 1; }
+    .tile.current::after { content: "NOW"; position: absolute; right: 2px; top: 2px; color: #7b5810; font-size: 6px; font-weight: 900; letter-spacing: .05em; }
+    .tile.owner-0 { box-shadow: inset 0 0 0 3px #ef7664; }
+    .tile.owner-1 { box-shadow: inset 0 0 0 3px #59a9e8; }
+    .tile.owner-2 { box-shadow: inset 0 0 0 3px #ac7be4; }
+    .tile.owner-3 { box-shadow: inset 0 0 0 3px #63c58c; }
+    .tokens { display: flex; justify-content: center; gap: 2px; min-height: 12px; align-items: center; }
+    .token { display: inline-block; width: clamp(8px, 1vw, 13px); height: clamp(8px, 1vw, 13px); border: 1.5px solid white; border-radius: 50%; box-shadow: 0 1px 3px #17251e; }
+    .token-0 { background: #ef7664; }
+    .token-1 { background: #59a9e8; }
+    .token-2 { background: #ac7be4; }
+    .token-3 { background: #63c58c; }
+    .tile.player-here .tile-name { margin-bottom: 2px; }
+    .center {
+      grid-area: 2 / 2 / 9 / 9; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      min-width: 0; border-radius: 14px; background:
+        radial-gradient(circle at center, rgba(91, 135, 85, .27), transparent 60%),
+        linear-gradient(145deg, #17392f, #122e25);
+      text-align: center; overflow: hidden;
+    }
+    .center-logo { color: var(--gold); font-family: Georgia, serif; font-size: clamp(20px, 3vw, 38px); font-weight: 900; letter-spacing: .14em; }
+    .center-rule { width: 44px; height: 2px; margin: 9px 0; background: var(--gold); }
+    .center-caption { color: #c1cbbd; font-size: clamp(8px, 1vw, 12px); letter-spacing: .14em; }
+    .center-message { max-width: 75%; margin-top: 20px; color: #e8e7d9; font-size: clamp(9px, 1.1vw, 14px); line-height: 1.6; }
+
+    .sidebar { display: flex; flex-direction: column; gap: 13px; }
+    .card { padding: 17px; border: 1px solid rgba(224, 224, 190, .12); border-radius: 17px; background: linear-gradient(145deg, rgba(31, 69, 56, .94), rgba(22, 51, 42, .94)); box-shadow: 0 12px 30px #07161030; }
+    .turn-card { padding: 20px; }
+    .card-label { margin: 0 0 13px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .16em; }
+    .turn-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .turn-heading h2 { margin: 0; font-size: 20px; }
+    .turn-pill { padding: 5px 9px; border-radius: 99px; color: #2f321c; background: var(--gold); font-size: 10px; font-weight: 850; }
+    .turn-sub { margin: 6px 0 17px; color: #bec9bb; font-size: 12px; }
+    .dice-row { display: flex; justify-content: center; gap: 11px; margin: 17px 0 18px; }
+    .die { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; color: #21372d; background: var(--cream); box-shadow: 0 4px 0 #c9c4b2; font-size: 29px; font-weight: 900; }
+    .button { width: 100%; padding: 12px 14px; border: 0; border-radius: 11px; color: #223323; background: var(--gold); font-weight: 900; cursor: pointer; transition: transform .15s, filter .15s; }
+    .button:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
+    .button:disabled { opacity: .46; cursor: not-allowed; }
+    .button.secondary { color: var(--ink); background: #34594b; }
+    .button-row { display: flex; gap: 8px; }
+    .button-row .button { flex: 1; }
+    .status { min-height: 42px; margin: 13px 0 0; color: #e2e7d9; font-size: 12px; line-height: 1.55; }
+    .players { display: flex; flex-direction: column; gap: 11px; }
+    .player { display: flex; align-items: center; gap: 10px; opacity: .67; }
+    .player.active { opacity: 1; }
+    .avatar { display: grid; place-items: center; flex: 0 0 35px; height: 35px; border-radius: 11px; color: white; font-size: 15px; font-weight: 900; }
+    .avatar-0 { background: #c9574b; }.avatar-1 { background: #347fb3; }.avatar-2 { background: #8056b1; }.avatar-3 { background: #398658; }
+    .player-info { min-width: 0; flex: 1; }
+    .player-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
+    .player-name small { color: var(--gold); font-size: 8px; letter-spacing: .08em; }
+    .player-money { margin-top: 3px; color: #b7c5b8; font-size: 11px; }
+    .property-count { color: var(--muted); font-size: 10px; }
+    .log { display: flex; flex-direction: column; gap: 9px; max-height: 170px; overflow: auto; }
+    .log-entry { display: flex; gap: 8px; color: #cad3c7; font-size: 11px; line-height: 1.4; }
+    .log-entry::before { content: ""; flex: 0 0 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: var(--gold); }
+    .footer-note { margin: 15px 2px 0; color: #83988a; font-size: 10px; text-align: center; line-height: 1.5; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #081b15cc; backdrop-filter: blur(7px); }
+    .modal { width: min(390px, 100%); padding: 27px; border: 1px solid #597264; border-radius: 22px; background: #18372e; box-shadow: 0 24px 80px #0008; text-align: center; }
+    .modal-icon { font-size: 42px; }
+    .modal h2 { margin: 8px 0; font-size: 23px; }
+    .modal p { color: #b9c5b8; font-size: 13px; line-height: 1.65; }
+    .select-label { display: block; margin: 22px 0 8px; color: var(--muted); text-align: left; font-size: 11px; font-weight: 800; }
+    select { width: 100%; padding: 11px; border: 1px solid #4b6c5e; border-radius: 10px; color: var(--ink); background: #102a23; }
+    .modal .button { margin-top: 17px; }
+    .hidden { display: none; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: minmax(0, 1fr) 290px; gap: 14px; }
+      .card { padding: 14px; }.turn-card { padding: 17px; }
+    }
+    @media (max-width: 760px) {
+      .app { padding: 17px 12px 25px; }
+      header { margin-bottom: 15px; }.header-meta { font-size: 10px; }
+      .layout { grid-template-columns: 1fr; }
+      .board-shell { max-width: 620px; width: 100%; margin: auto; }
+      .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .turn-card { grid-row: span 2; }
+      .log-card { grid-column: 1 / -1; }
+      .log { max-height: 120px; }
+    }
+    @media (max-width: 460px) {
+      .brand-mark { width: 38px; height: 38px; }
+      h1 { font-size: 18px; }.header-meta { display: none; }
+      .board { gap: 3px; }.tile { border-radius: 3px; }
+      .tile.property { padding-top: 10px; }
+      .sidebar { grid-template-columns: 1fr; }
+      .turn-card { grid-row: auto; }
+      .log-card { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div><p class="eyebrow">THE CITY IS YOURS</p><h1>MONOPOLY DAY</h1></div>
+      </div>
+      <div class="header-meta"><span class="live-dot"></span> ローカル対戦 <span>・</span> 2〜4人</div>
+    </header>
+
+    <div class="layout">
+      <section class="board-shell" aria-label="ゲームボード">
+        <div class="board" id="board"></div>
+      </section>
+      <aside class="sidebar">
+        <section class="card turn-card">
+          <p class="card-label">YOUR TURN</p>
+          <div class="turn-heading"><h2 id="turn-name">プレイヤー 1</h2><span class="turn-pill" id="round-label">ROUND 1</span></div>
+          <p class="turn-sub" id="turn-sub">サイコロを振って街へ出よう。</p>
+          <div class="dice-row"><div class="die" id="die-one">–</div><div class="die" id="die-two">–</div></div>
+          <button class="button" id="roll-button">サイコロを振る</button>
+          <div class="button-row hidden" id="decision-buttons">
+            <button class="button" id="buy-button">購入する</button>
+            <button class="button secondary" id="pass-button">見送る</button>
+          </div>
+          <p class="status" id="status" aria-live="polite">ゲームを始めましょう。</p>
+        </section>
+        <section class="card">
+          <p class="card-label">PLAYERS</p>
+          <div class="players" id="players"></div>
+        </section>
+        <section class="card log-card">
+          <p class="card-label">GAME LOG</p>
+          <div class="log" id="log" aria-live="polite"></div>
+        </section>
+      </aside>
+    </div>
+    <p class="footer-note">土地を買って家賃を集めよう。資金が尽きたプレイヤーが脱落し、最後に残った人の勝ち！</p>
+  </main>
+
+  <div class="overlay" id="setup-overlay">
+    <div class="modal">
+      <div class="modal-icon">🎲</div>
+      <p class="eyebrow">A LITTLE FRIENDLY COMPETITION</p>
+      <h2>街のオーナーになろう</h2>
+      <p>サイコロを振って街を巡り、土地を買って家賃を集めよう。最後まで資金を残した人が勝者です。</p>
+      <label class="select-label" for="player-count">プレイ人数</label>
+      <select id="player-count">
+        <option value="2">2人でプレイ</option><option value="3">3人でプレイ</option><option value="4">4人でプレイ</option>
+      </select>
+      <button class="button" id="start-button">ゲームスタート</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="end-overlay">
+    <div class="modal">
+      <div class="modal-icon">🏆</div>
+      <p class="eyebrow">GAME OVER</p>
+      <h2 id="winner-title">プレイヤー 1 の勝利！</h2>
+      <p id="winner-copy"></p>
+      <button class="button" id="restart-button">もう一度遊ぶ</button>
+    </div>
+  </div>
+
+  <script>
+    const spaces = [
+      { name: "START", kind: "corner", icon: "🚩", label: "スタート" },
+      { name: "青空通り", kind: "property", band: "#75b5dd", price: 100, rent: 20 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "さくら坂", kind: "property", band: "#75b5dd", price: 120, rent: 24 },
+      { name: "市税", kind: "tax", icon: "🏛️", label: "市税", amount: 100 },
+      { name: "海辺の駅", kind: "property", band: "#4b5e69", price: 180, rent: 36 },
+      { name: "こもれび通り", kind: "property", band: "#e88e9c", price: 140, rent: 28 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "JAIL", kind: "corner", icon: "🔒", label: "休憩所" },
+      { name: "古書店通り", kind: "property", band: "#e88e9c", price: 150, rent: 30 },
+      { name: "水道局", kind: "property", band: "#68b9b1", price: 160, rent: 32 },
+      { name: "市税", kind: "tax", icon: "🏛️", label: "市税", amount: 120 },
+      { name: "レンガ横丁", kind: "property", band: "#e8a65e", price: 180, rent: 36 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "市場通り", kind: "property", band: "#e8a65e", price: 200, rent: 40 },
+      { name: "花時計広場", kind: "corner", icon: "🌷", label: "フリー広場" },
+      { name: "森の美術館", kind: "property", band: "#d16d54", price: 220, rent: 44 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "灯台通り", kind: "property", band: "#d16d54", price: 240, rent: 48 },
+      { name: "電力会社", kind: "property", band: "#68b9b1", price: 160, rent: 32 },
+      { name: "山手の駅", kind: "property", band: "#4b5e69", price: 180, rent: 36 },
+      { name: "並木道", kind: "property", band: "#e4d06a", price: 260, rent: 52 },
+      { name: "市税", kind: "tax", icon: "🏛️", label: "市税", amount: 150 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "GO TO JAIL", kind: "corner", icon: "🚔", label: "休憩所へ" },
+      { name: "星空通り", kind: "property", band: "#e4d06a", price: 280, rent: 56 },
+      { name: "海風通り", kind: "property", band: "#75b5dd", price: 300, rent: 60 },
+      { name: "中央駅", kind: "property", band: "#4b5e69", price: 200, rent: 40 },
+      { name: "展望台通り", kind: "property", band: "#75b5dd", price: 320, rent: 64 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" },
+      { name: "王冠通り", kind: "property", band: "#7c67a7", price: 350, rent: 70 },
+      { name: "チャンス", kind: "chance", icon: "✨", label: "チャンス" }
+    ];
+    const colors = ["#ef7664", "#59a9e8", "#ac7be4", "#63c58c"];
+    const names = ["プレイヤー 1", "プレイヤー 2", "プレイヤー 3", "プレイヤー 4"];
+    const board = document.querySelector("#board");
+    const playersElement = document.querySelector("#players");
+    const logElement = document.querySelector("#log");
+    const rollButton = document.querySelector("#roll-button");
+    const decisions = document.querySelector("#decision-buttons");
+    const statusElement = document.querySelector("#status");
+    let players = [];
+    let activePlayer = 0;
+    let round = 1;
+    let pendingProperty = null;
+    let finished = false;
+
+    function boardPosition(index) {
+      if (index <= 8) return [9, 9 - index];
+      if (index <= 16) return [9 - (index - 8), 1];
+      if (index <= 24) return [1, 1 + (index - 16)];
+      return [1 + (index - 24), 9];
+    }
+
+    function renderBoard() {
+      board.innerHTML = "";
+      spaces.forEach((space, index) => {
+        const [row, column] = boardPosition(index);
+        const tile = document.createElement("div");
+        tile.className = `tile ${space.kind}${space.kind === "corner" ? " corner" : ""}`;
+        tile.style.gridRow = row;
+        tile.style.gridColumn = column;
+        const owner = players.findIndex(player => player.properties.includes(index));
+        if (owner !== -1) tile.classList.add(`owner-${owner}`);
+        const occupants = players.map((player, playerIndex) => player.position === index && !player.bankrupt
+          ? `<span class="token token-${playerIndex}" title="${player.name}"></span>` : "").join("");
+        if (players.some(player => player.position === index && !player.bankrupt)) tile.classList.add("player-here");
+        if (owner === activePlayer && players[activePlayer]?.position === index) tile.classList.add("current");
+        const title = space.kind === "property" ? space.name : (space.label || space.name);
+        tile.innerHTML = `${space.kind === "property" ? `<span class="tile-band" style="--band:${space.band}"></span>` : ""}
+          ${space.icon ? `<span class="tile-icon">${space.icon}</span>` : ""}
+          <span class="tile-name">${title}</span>
+          ${space.kind === "property" ? `<span class="tile-price">$${space.price}</span>` : ""}
+          <span class="tokens">${occupants}</span>`;
+        board.append(tile);
+      });
+      const center = document.createElement("div");
+      center.className = "center";
+      center.innerHTML = `<div class="center-logo">MONOPOLY</div><div class="center-rule"></div>
+        <div class="center-caption">街をめぐる、ちいさな冒険。</div>
+        <div class="center-message">${finished ? "勝負あり！また遊んでね。" : (pendingProperty !== null ? `${spaces[pendingProperty].name} に到着！` : "サイコロを振って、あなただけの街をつくろう。")}</div>`;
+      board.append(center);
+    }
+
+    function renderPlayers() {
+      playersElement.innerHTML = players.map((player, index) => `
+        <div class="player ${index === activePlayer && !finished ? "active" : ""}" ${player.bankrupt ? 'style="opacity:.35"' : ""}>
+          <div class="avatar avatar-${index}">${index + 1}</div>
+          <div class="player-info"><div class="player-name">${player.name}${index === activePlayer && !finished ? "<small>YOUR TURN</small>" : ""}</div>
+            <div class="player-money">${player.bankrupt ? "BANKRUPT" : `$${player.money.toLocaleString()}`}</div></div>
+          <span class="property-count">${player.properties.length}件</span>
+        </div>`).join("");
+      document.querySelector("#turn-name").textContent = players[activePlayer]?.name || names[0];
+      document.querySelector("#round-label").textContent = `ROUND ${round}`;
+      document.querySelector("#turn-sub").textContent = finished ? "ゲーム終了" : "サイコロを振って街へ出よう。";
+      renderBoard();
+    }
+
+    function log(message) {
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.textContent = message;
+      logElement.prepend(entry);
+      while (logElement.children.length > 8) logElement.lastElementChild.remove();
+    }
+
+    function setStatus(message) {
+      statusElement.textContent = message;
+    }
+
+    function setDice(first, second) {
+      document.querySelector("#die-one").textContent = first;
+      document.querySelector("#die-two").textContent = second;
+    }
+
+    function nextTurn() {
+      pendingProperty = null;
+      decisions.classList.add("hidden");
+      rollButton.classList.remove("hidden");
+      rollButton.disabled = false;
+      let next = activePlayer;
+      do {
+        next = (next + 1) % players.length;
+        if (next === 0) round += 1;
+      } while (players[next].bankrupt);
+      activePlayer = next;
+      setStatus(`${players[activePlayer].name} の番です。`);
+      renderPlayers();
+    }
+
+    function charge(playerIndex, amount, recipientIndex = null) {
+      const player = players[playerIndex];
+      const paidAmount = Math.min(player.money, amount);
+      player.money -= paidAmount;
+      if (recipientIndex !== null && !players[recipientIndex].bankrupt) {
+        players[recipientIndex].money += paidAmount;
+      }
+      if (paidAmount < amount) {
+        player.bankrupt = true;
+        player.properties.forEach(propertyIndex => {
+          spaces[propertyIndex].owner = null;
+        });
+        player.properties = [];
+        log(`${player.name} は資金不足で脱落しました。`);
+        return false;
+      }
+      return true;
+    }
+
+    function resolveLanding(rollTotal) {
+      const player = players[activePlayer];
+      const space = spaces[player.position];
+      renderPlayers();
+      if (space.kind === "property") {
+        const owner = players.findIndex(other => other.properties.includes(player.position));
+        if (owner === -1) {
+          pendingProperty = player.position;
+          if (player.money >= space.price) {
+            setStatus(`${space.name}（$${space.price}）は空き地です。購入しますか？`);
+            rollButton.classList.add("hidden");
+            decisions.classList.remove("hidden");
+            document.querySelector("#buy-button").disabled = false;
+          } else {
+            setStatus(`${space.name} は空き地ですが、購入資金が足りません。`);
+            window.setTimeout(finishTurn, 1400);
+          }
+          return;
+        }
+        if (owner !== activePlayer) {
+          const rent = space.rent;
+          const paid = charge(activePlayer, rent, owner);
+          setStatus(paid ? `${players[owner].name} に家賃 $${rent} を支払いました。` : "家賃を払えず、脱落しました。");
+          log(`${player.name} は ${space.name} の家賃 $${rent} を支払いました。`);
+          if (paid) renderPlayers();
+          window.setTimeout(finishTurn, 1100);
+          return;
+        }
+        setStatus(`自分の土地 ${space.name} に到着しました。`);
+        window.setTimeout(finishTurn, 900);
+        return;
+      }
+      if (space.kind === "tax") {
+        const paid = charge(activePlayer, space.amount);
+        setStatus(paid ? `市税 $${space.amount} を支払いました。` : "税金を払えず、脱落しました。");
+        log(`${player.name} は市税 $${space.amount} を支払いました。`);
+        renderPlayers();
+        window.setTimeout(finishTurn, 1100);
+        return;
+      }
+      if (space.kind === "chance") {
+        const cards = [
+          { text: "臨時収入！$100を受け取りました。", amount: 100 },
+          { text: "街の清掃に協力。$80を支払いました。", amount: -80 },
+          { text: "イベントの賞金！$150を受け取りました。", amount: 150 },
+          { text: "交通費を支払いました。$50を支払いました。", amount: -50 }
+        ];
+        const card = cards[Math.floor(Math.random() * cards.length)];
+        let paid = true;
+        if (card.amount < 0) paid = charge(activePlayer, -card.amount);
+        else player.money += card.amount;
+        setStatus(paid ? card.text : "支払いができず、脱落しました。");
+        log(`${player.name}：${card.text}`);
+        renderPlayers();
+        window.setTimeout(finishTurn, 1200);
+        return;
+      }
+      if (player.position === 24) {
+        player.position = 8;
+        setStatus("休憩所へ移動！次のターンはお休みです。");
+        player.skipNext = true;
+        log(`${player.name} は休憩所へ移動しました。`);
+        renderPlayers();
+        window.setTimeout(finishTurn, 1100);
+        return;
+      }
+      if (player.position === 0) {
+        setStatus("スタートに到着！通過ボーナスを受け取りました。");
+      } else {
+        setStatus(`ゾロ目！合計${rollTotal}で進みました。`);
+      }
+      window.setTimeout(finishTurn, 900);
+    }
+
+    function rollDice() {
+      if (finished) return;
+      rollButton.disabled = true;
+      const player = players[activePlayer];
+      if (player.skipNext) {
+        player.skipNext = false;
+        setDice("–", "–");
+        setStatus(`${player.name} は休憩所で1回お休みです。`);
+        log(`${player.name} は1回休み。`);
+        window.setTimeout(finishTurn, 1100);
+        return;
+      }
+      const first = Math.floor(Math.random() * 6) + 1;
+      const second = Math.floor(Math.random() * 6) + 1;
+      const total = first + second;
+      setDice(["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][first - 1], ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][second - 1]);
+      const oldPosition = player.position;
+      player.position = (player.position + total) % spaces.length;
+      if (player.position < oldPosition) {
+        player.money += 200;
+        log(`${player.name} がスタートを通過。$200を受け取りました。`);
+      }
+      log(`${player.name} は ${first} と ${second}、合計 ${total}。`);
+      setStatus(`${total}マス進みました。`);
+      renderPlayers();
+      window.setTimeout(() => resolveLanding(total), 450);
+    }
+
+    function finishTurn() {
+      if (players.filter(player => !player.bankrupt).length <= 1) {
+        finished = true;
+        const winner = players.find(player => !player.bankrupt);
+        document.querySelector("#winner-title").textContent = `${winner.name} の勝利！`;
+        document.querySelector("#winner-copy").textContent = `資金 $${winner.money.toLocaleString()}、土地 ${winner.properties.length}件を獲得。街のオーナーはあなたです！`;
+        document.querySelector("#end-overlay").classList.remove("hidden");
+        renderPlayers();
+        return;
+      }
+      nextTurn();
+    }
+
+    rollButton.addEventListener("click", rollDice);
+    document.querySelector("#buy-button").addEventListener("click", () => {
+      if (pendingProperty === null) return;
+      const space = spaces[pendingProperty];
+      const player = players[activePlayer];
+      player.money -= space.price;
+      player.properties.push(pendingProperty);
+      log(`${player.name} は ${space.name} を $${space.price} で購入しました。`);
+      setStatus(`${space.name} を購入しました！`);
+      renderPlayers();
+      window.setTimeout(finishTurn, 850);
+    });
+    document.querySelector("#pass-button").addEventListener("click", () => {
+      if (pendingProperty !== null) log(`${players[activePlayer].name} は ${spaces[pendingProperty].name} の購入を見送りました。`);
+      finishTurn();
+    });
+
+    document.querySelector("#start-button").addEventListener("click", () => {
+      const count = Number(document.querySelector("#player-count").value);
+      players = names.slice(0, count).map(name => ({ name, money: 1500, position: 0, properties: [], bankrupt: false, skipNext: false }));
+      activePlayer = 0;
+      round = 1;
+      finished = false;
+      pendingProperty = null;
+      logElement.innerHTML = "";
+      setDice("–", "–");
+      setStatus("ゲーム開始！プレイヤー 1 の番です。");
+      document.querySelector("#setup-overlay").classList.add("hidden");
+      renderPlayers();
+      log(`${count}人でゲームスタート！`);
+    });
+    document.querySelector("#restart-button").addEventListener("click", () => {
+      document.querySelector("#end-overlay").classList.add("hidden");
+      document.querySelector("#setup-overlay").classList.remove("hidden");
+    });
+    renderBoard();
+  </script>
+</body>
+</html>
